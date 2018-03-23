@@ -17,7 +17,7 @@ LNET_CFLAGS	= @LNET_CFLAGS@
 LNETLIB		= @LNETLIB@
 
 LIBS_CFLAGS	= -I../src $(PCAP_CFLAGS) $(LNET_CFLAGS)
-LIBS		= -L../src -lnids $(PCAPLIB) $(LNETLIB) @LIBS@
+LIBS		= -L../src -lnids -lglib-2.0 $(PCAPLIB) $(LNETLIB) @LIBS@
 
 .c.o:
 	$(CC) -c $(CFLAGS) -I. $(LIBS_CFLAGS) $<
