@@ -20,8 +20,11 @@ struct host {
   int n_packets;
   struct scan *packets;
 };
-
+/*
+**	scan for timeout
+*/
 void scan_init(void);
+
 void scan_exit(void);
 void detect_scan(struct ip *);
 

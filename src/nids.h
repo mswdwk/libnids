@@ -4,14 +4,14 @@
 */
 
 #ifndef _NIDS_NIDS_H
-# define _NIDS_NIDS_H
+#define _NIDS_NIDS_H
 
-# include <sys/types.h>
+#include <sys/types.h>
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
-# include <netinet/ip.h>
-# include <netinet/tcp.h>
-# include <pcap.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <pcap.h>
 
 # ifdef __cplusplus
 extern "C" {
@@ -85,8 +85,8 @@ struct half_stream
   u_short window;
   u_char ts_on;
   u_char wscale_on;
-  u_int curr_ts; 
-  u_int wscale;
+  u_int curr_ts; // current timespec
+  u_int wscale; // window scale
   struct skbuff *list;
   struct skbuff *listtail;
 };
@@ -98,7 +98,7 @@ struct tcp_stream
   struct lurker_node *listeners;
   struct half_stream client;
   struct half_stream server;
-  struct tcp_stream *next_node;
+  struct tcp_stream *next_node;// deal with hash Collisions which have the same hash value
   struct tcp_stream *prev_node;
   int hash_index;
   struct tcp_stream *next_time;
@@ -176,6 +176,9 @@ struct nids_chksum_ctl {
 	u_int reserved;
 };
 extern void nids_register_chksum_ctl(struct nids_chksum_ctl *, int);
+
+extern char *adres(struct tuple4 addr);
+extern char *adres2(struct tuple4 addr);
 
 # ifdef __cplusplus
 }

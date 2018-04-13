@@ -37,9 +37,10 @@ extern int set_all_promisc();
 #endif
 
 #define int_ntoa(x)	inet_ntoa(*((struct in_addr *)&x))
+
 extern int ip_options_compile(unsigned char *);
 extern int raw_init();
-static void nids_syslog(int, int, struct ip *, void *);
+static void nids_syslog(int, int, struct ip *, void *,char*);
 static int nids_ip_filter(struct ip *, int);
 
 static struct proc_node *ip_frag_procs;
@@ -118,7 +119,7 @@ static int nids_ip_filter(struct ip *x, int len)
     return 1;
 }
 
-static void nids_syslog(int type, int errnum, struct ip *iph, void *data)
+static void nids_syslog(int type, int errnum, struct ip *iph, void *data,char*msg)
 {
     char saddr[20], daddr[20];
     char buf[1024];
@@ -145,12 +146,12 @@ static void nids_syslog(int type, int errnum, struct ip *iph, void *data)
 	strcpy(daddr, int_ntoa(iph->ip_dst.s_addr));
 	if (errnum != NIDS_WARN_TCP_HDR)
 	    syslog(nids_params.syslog_level,
-		   "%s,from %s:%hu to  %s:%hu\n", nids_warnings[errnum],
+		   "%s ip_id %u,from %s:%hu to  %s:%hu\n", nids_warnings[errnum],ntohs(iph->ip_id),
 		   saddr, ntohs(((struct tcphdr *) data)->th_sport), daddr,
 		   ntohs(((struct tcphdr *) data)->th_dport));
 	else
-	    syslog(nids_params.syslog_level, "%s,from %s to %s\n",
-		   nids_warnings[errnum], saddr, daddr);
+	    syslog(nids_params.syslog_level, "%s ip_id %u,from %s to %s,%s\n",
+		   nids_warnings[errnum], ntohs(iph->ip_id),saddr, daddr,msg);
 	break;
 
     case NIDS_WARN_SCAN:
@@ -584,9 +585,9 @@ int nids_init()
 {
     /* free resources that previous usages might have allocated */
     nids_exit();
-
     if (nids_params.pcap_desc)
         desc = nids_params.pcap_desc;
+
     else if (nids_params.filename) {
 	if ((desc = pcap_open_offline(nids_params.filename,
 				      nids_errbuf)) == NULL)
@@ -690,6 +691,11 @@ int nids_run()
     pcap_loop(desc, -1, (pcap_handler) nids_pcap_handler, 0);
     /* FIXME: will this code ever be called? Don't think so - mcree */
     STOP_CAP_QUEUE_PROCESS_THREAD(); 
+	printf("nids_params.n_tcp_streams %d \n",nids_params.n_tcp_streams);
+	printf("nids_params.n_hosts       %d \n",nids_params.n_hosts);
+	printf("nids_params.sk_buff_size  %d \n",nids_params.sk_buff_size);
+	printf("nids_params.syslog        %p \n",nids_params.syslog);
+	printf("nids_params.syslog_level  %d \n",nids_params.syslog_level);
     nids_exit();
     return 0;
 }
@@ -769,3 +775,35 @@ int nids_dispatch(int cnt)
     STOP_CAP_QUEUE_PROCESS_THREAD(); 
     return r;
 }
+
+ // struct tuple4 contains addresses and port numbers of the TCP connections
+ // the following auxiliary function produces a string looking like
+ // 10.0.0.1,1024,10.0.0.2,23
+  char *adres(struct tuple4 addr)
+ {
+   static char buf[256];
+   strcpy (buf, int_ntoa (addr.saddr));
+   int ret = sprintf (buf + strlen (buf), ":%i -> ", addr.source);
+   strcat (buf, int_ntoa (addr.daddr));
+   ret += sprintf (buf + strlen (buf), ":%i", addr.dest);
+   buf[ret] = 0;
+   return buf;
+ }
+   char *adres2(struct tuple4 addr)
+  {
+	static char buf[256];
+	memset(buf,0,sizeof(buf));
+	#if 0
+	strcpy (buf, int_ntoa (addr.saddr));
+	int ret = sprintf (buf + strlen (buf), "-%d>", addr.source);
+	strcat (buf, int_ntoa (addr.daddr));
+	ret += sprintf (buf + strlen (buf), "-%d", addr.dest);
+	buf[ret] = 0;
+	#else
+	struct in_addr ipaddr;
+    ipaddr.s_addr = (addr.daddr);
+	int ret = sprintf (buf , "%s-%d_%d", inet_ntoa(ipaddr),addr.dest,addr.source);
+	#endif
+	return buf;
+  }
+

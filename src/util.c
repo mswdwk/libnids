@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
 #include "tcp.h"
 #include "util.h"
 #include "nids.h"
@@ -62,3 +62,6 @@ unregister_callback(struct proc_node **procs, void (*x))
     ipp_prev = ipp;
   }
 }
+
+
+

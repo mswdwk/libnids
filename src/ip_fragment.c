@@ -104,8 +104,6 @@ static int timenow;
 static unsigned int time0;
 static struct timer_list *timer_head = 0, *timer_tail = 0;
 
-#define int_ntoa(x)	inet_ntoa(*((struct in_addr *)&x))
-
 static int
 jiffies()
 {

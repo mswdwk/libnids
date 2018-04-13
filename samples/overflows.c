@@ -21,20 +21,7 @@ not libnids)
 #include <string.h>
 #include <syslog.h>
 #include "nids.h"
-
-#define int_ntoa(x)	inet_ntoa(*((struct in_addr *)&x))
-
-char *
-adres (struct tuple4 addr)
-{
-  static char buf[256];
-  strcpy (buf, int_ntoa (addr.saddr));
-  sprintf (buf + strlen (buf), ",%i,", addr.source);
-  strcat (buf, int_ntoa (addr.daddr));
-  sprintf (buf + strlen (buf), ",%i", addr.dest);
-  return buf;
-}
-
+#include "util.h"
 
 /*
 if we find a pattern AUTHENTICATE {an_int} in data stream sent to an imap 
@@ -47,18 +34,18 @@ connection.
 void
 detect_imap (struct tcp_stream *a_tcp)
 {
-  char numbuf[30];
-  int i, j, datalen, numberlen;
-  struct half_stream *hlf;
-  if (a_tcp->nids_state == NIDS_JUST_EST)
+	char numbuf[30];
+	int i, j, datalen, numberlen;
+	struct half_stream *hlf;
+	if (a_tcp->nids_state == NIDS_JUST_EST)
     {
-      if (a_tcp->addr.dest == 143)
-	{
-	  a_tcp->server.collect++;
-	  return;
-	}
-      else
-	return;
+		if (a_tcp->addr.dest == 143)
+		{
+		  a_tcp->server.collect++;
+		  return;
+		}
+	    else
+			return;
     }
   if (a_tcp->nids_state != NIDS_DATA)
     return;

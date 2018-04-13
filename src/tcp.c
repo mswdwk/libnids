@@ -39,6 +39,9 @@ enum {
 
 #endif
 
+#define TCP_RECV_DATA_BUF_SIZE 6553500
+
+
 #define FIN_SENT 120
 #define FIN_CONFIRMED 121
 #define COLLECT_cc 1
@@ -273,12 +276,14 @@ add_new_tcp(struct tcphdr * this_tcphdr, struct ip * this_iphdr)
     for (i = tcp_oldest->listeners; i; i = i->next)
       (i->item) (tcp_oldest, &i->data);
     nids_free_tcp_stream(tcp_oldest);
-    if (orig_client_state!=TCP_SYN_SENT)
+    if (orig_client_state!=TCP_SYN_SENT){
+		printf("tcp_num %d max_stream %d orig_client_state %d\n",tcp_num,max_stream,orig_client_state);
       nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_TOOMUCH, ugly_iphdr, this_tcphdr);
+    }
   }
   a_tcp = free_streams;
   if (!a_tcp) {
-    fprintf(stderr, "gdb me ...\n");
+    fprintf(stderr, "gdb me(pid %d) ...\n",getpid());
     pause();
   }
   free_streams = a_tcp->next_free;
@@ -431,57 +436,53 @@ add_from_skb(struct tcp_stream * a_tcp, struct half_stream * rcv,
 	     u_char *data, int datalen,
 	     u_int this_seq, char fin, char urg, u_int urg_ptr)
 {
-  u_int lost = EXP_SEQ - this_seq;
-  int to_copy, to_copy2;
-  
-  if (urg && after(urg_ptr, EXP_SEQ - 1) &&
-      (!rcv->urg_seen || after(urg_ptr, rcv->urg_ptr))) {
-    rcv->urg_ptr = urg_ptr;
-    rcv->urg_seen = 1;
-  }
-  if (rcv->urg_seen && after(rcv->urg_ptr + 1, this_seq + lost) &&
-      before(rcv->urg_ptr, this_seq + datalen)) {
-    to_copy = rcv->urg_ptr - (this_seq + lost);
-    if (to_copy > 0) {
-      if (rcv->collect) {
-	add2buf(rcv, (char *)(data + lost), to_copy);
-	notify(a_tcp, rcv);
-      }
-      else {
-	rcv->count += to_copy;
-	rcv->offset = rcv->count; /* clear the buffer */
-      }
-    }
-    rcv->urgdata = data[rcv->urg_ptr - this_seq];
-    rcv->count_new_urg = 1;
-    notify(a_tcp, rcv);
-    rcv->count_new_urg = 0;
-    rcv->urg_seen = 0;
-    rcv->urg_count++;
-    to_copy2 = this_seq + datalen - rcv->urg_ptr - 1;
-    if (to_copy2 > 0) {
-      if (rcv->collect) {
-	add2buf(rcv, (char *)(data + lost + to_copy + 1), to_copy2);
-	notify(a_tcp, rcv);
-      }
-      else {
-	rcv->count += to_copy2;
-	rcv->offset = rcv->count; /* clear the buffer */
-      }
-    }
-  }
-  else {
-    if (datalen - lost > 0) {
-      if (rcv->collect) {
-	add2buf(rcv, (char *)(data + lost), datalen - lost);
-	notify(a_tcp, rcv);
-      }
-      else {
-	rcv->count += datalen - lost;
-	rcv->offset = rcv->count; /* clear the buffer */
-      }
-    }
-  }
+	u_int lost = EXP_SEQ - this_seq;
+	int to_copy, to_copy2;
+
+	if (urg && after(urg_ptr, EXP_SEQ - 1) &&
+	  (!rcv->urg_seen || after(urg_ptr, rcv->urg_ptr))) {
+		rcv->urg_ptr = urg_ptr;
+		rcv->urg_seen = 1;
+	}
+	if (rcv->urg_seen && after(rcv->urg_ptr + 1, this_seq + lost) &&
+	  before(rcv->urg_ptr, this_seq + datalen)) {
+		to_copy = rcv->urg_ptr - (this_seq + lost);
+		if (to_copy > 0) {
+			if (rcv->collect) {
+				add2buf(rcv, (char *)(data + lost), to_copy);
+				notify(a_tcp, rcv);
+			}else {
+				rcv->count += to_copy;
+				rcv->offset = rcv->count; /* clear the buffer */
+			}
+		}
+		rcv->urgdata = data[rcv->urg_ptr - this_seq];
+		rcv->count_new_urg = 1;
+		notify(a_tcp, rcv);
+		rcv->count_new_urg = 0;
+		rcv->urg_seen = 0;
+		rcv->urg_count++;
+		to_copy2 = this_seq + datalen - rcv->urg_ptr - 1;
+		if (to_copy2 > 0) {
+			if (rcv->collect) {
+				add2buf(rcv, (char *)(data + lost + to_copy + 1), to_copy2);
+				notify(a_tcp, rcv);
+			}else {
+				rcv->count += to_copy2;
+				rcv->offset = rcv->count; /* clear the buffer */
+			}
+		}
+	}else {
+		if (datalen - lost > 0) {
+			if (rcv->collect) {
+				add2buf(rcv, (char *)(data + lost), datalen - lost);
+				notify(a_tcp, rcv);
+			}else {
+				rcv->count += datalen - lost;
+				rcv->offset = rcv->count; /* clear the buffer */
+			}
+		}
+	}
   if (fin) {
     snd->state = FIN_SENT;
     if (rcv->state == TCP_CLOSING)
@@ -719,7 +720,7 @@ process_tcp(u_char * data, int skblen)
   iplen = ntohs(this_iphdr->ip_len);
   if ((unsigned)iplen < 4 * this_iphdr->ip_hl + sizeof(struct tcphdr)) {
     nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_HDR, this_iphdr,
-		       this_tcphdr);
+		       this_tcphdr,"tcp header len check");
     return;
   } // ktos sie bawi
   
@@ -727,24 +728,29 @@ process_tcp(u_char * data, int skblen)
   
   if (datalen < 0) {
     nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_HDR, this_iphdr,
-		       this_tcphdr);
+		       this_tcphdr,"data len check");
     return;
   } // ktos sie bawi
 
   if ((this_iphdr->ip_src.s_addr | this_iphdr->ip_dst.s_addr) == 0) {
     nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_HDR, this_iphdr,
-		       this_tcphdr);
+		       this_tcphdr,"tcp ip addr check");
     return;
   }
   if (!(this_tcphdr->th_flags & TH_ACK))
     detect_scan(this_iphdr);
   if (!nids_params.n_tcp_streams) return;
+  #if 0
   if (my_tcp_check(this_tcphdr, iplen - 4 * this_iphdr->ip_hl,
 		   this_iphdr->ip_src.s_addr, this_iphdr->ip_dst.s_addr)) {
     nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_HDR, this_iphdr,
-		       this_tcphdr);
+		       this_tcphdr,"tcp_check");
     return;
   }
+#else
+	int checksum = my_tcp_check(this_tcphdr, iplen - 4 * this_iphdr->ip_hl,
+	this_iphdr->ip_src.s_addr, this_iphdr->ip_dst.s_addr);
+#endif
 #if 0
   check_flags(this_iphdr, this_tcphdr);
 //ECN
@@ -896,7 +902,7 @@ process_tcp(u_char * data, int skblen)
 	      (char *) (this_tcphdr) + 4 * this_tcphdr->th_off,
 	      datalen, skblen);
   snd->window = ntohs(this_tcphdr->th_win);
-  if (rcv->rmem_alloc > 65535)
+  if (rcv->rmem_alloc > TCP_RECV_DATA_BUF_SIZE)
     prune_queue(rcv, this_tcphdr);
   if (!a_tcp->listeners)
     nids_free_tcp_stream(a_tcp);
