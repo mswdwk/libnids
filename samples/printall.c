@@ -47,24 +47,33 @@ int deal_with_flv_video(struct tcp_stream *a_tcp,FLV_FLOW_HEADER*h)
 		}
 	}
 	
-	int get_data_len = 0, prev_tag_size = 0, tag_data_size = 0 ,new_need_data_len = 0;
+	int get_data_len = 0, prev_tag_size = 0, tag_data_size = 0 ,new_need_data_len = 0,offset = 0;;
 	FLV_TAG *ftag ;
 	
-	printf("flow_id %2d data_len %7d read %7d bufsize %7d remaind_data_len %7d\n",h->flv_flow_id,
-		data_len,a_tcp->read,client->bufsize,remaind_data_len);
+	printf("flow_id %2d data_len %7d last_need_len %7d read %7d bufsize %7d remaind_data_len %7d\n",h->flv_flow_id,data_len,
+		h->last_need_data_len,a_tcp->read,client->bufsize,remaind_data_len);
 
 	while( remaind_data_len >= h->last_need_data_len ){
-		ftag = (FLV_TAG*)data;
+		ftag = (FLV_TAG*)(data + offset);
 		prev_tag_size = ntohl(ftag->prev_tag_size);
 		if(prev_tag_size != h->last_prev_tag_size){
-			printf("flv data error:tag_id %3d prev_tag_size %u !=  %u last_prev_tag_size. client->count_new %u count %8u offset %8u %8d\n",
-				h->tag_id,prev_tag_size,h->last_prev_tag_size,client->count_new,client->count,client->offset,remaind_data_len);
-			dump_print("FLV_TAG_HEADER", 64, ftag);
+			//printf("flv data error:tag_id %3d prev_tag_size %u !=  %u last_prev_tag_size. client->count_new %u count %8u offset %8u %8d\n",h->tag_id,prev_tag_size,h->last_prev_tag_size,client->count_new,client->count,client->offset,remaind_data_len);
+			//dump_print("FLV_TAG_HEADER", 64, ftag);
 			//ready to destructor 
 			//flv_stream_destruct(h->flv_flow_id);
+			
+			if( remaind_data_len > offset ){
+				//data++;
+				offset++;
+				discard_data_len++;
+				continue;
+			}
+			
 			nids_discard(a_tcp, discard_data_len);
-			exit(0);
+			//exit(0);
 			return -1;
+		}else if(prev_tag_size == h->last_prev_tag_size && offset ){
+			printf("flow_id %2d tag_id %d data_len %7d found offset %d \n",h->flv_flow_id,h->tag_id,data_len,offset);
 		}
 		
 		GET_FLV_TAG_DATA_SIZE(tag_data_size,&ftag->tag_header);
@@ -72,7 +81,7 @@ int deal_with_flv_video(struct tcp_stream *a_tcp,FLV_FLOW_HEADER*h)
 		if(new_need_data_len > remaind_data_len){
 			h->last_need_data_len = new_need_data_len;
 			//discard_data_len += remaind_data_len;
-			printf("need_data_len %u > remaind_data_len %u, discard_data_len %u\n",new_need_data_len ,remaind_data_len ,
+			printf("tag_id %d need_data_len %u > remaind_data_len %u, discard_data_len %u\n",h->tag_id,new_need_data_len ,remaind_data_len ,
 			discard_data_len);
 			dump_print("FLV_TAG_HEADER", 64, ftag);
 			goto discard_data;
@@ -86,12 +95,14 @@ int deal_with_flv_video(struct tcp_stream *a_tcp,FLV_FLOW_HEADER*h)
 		h->tag_id++;
 		discard_data_len += new_need_data_len ;
 		remaind_data_len -= new_need_data_len ;
+		remaind_data_len -= offset ;
 					data += new_need_data_len ;
 		
-		//last_need_data_len = 15;
-		tag_data_size = 0;
+		printf("tag_id %4u tag_data_size %8u discard_data_len %7d\n",h->tag_id, tag_data_size,discard_data_len);
 		//printf("last_prev_tag_size %8u prev_tag_size %8u tag_id %4u tag_data_size %8u\n",h->last_prev_tag_size,prev_tag_size,h->tag_id, tag_data_size);
 	
+		tag_data_size = 0;
+		h->last_need_data_len = 15;
 	}
 	
 discard_data:	
