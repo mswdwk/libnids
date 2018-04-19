@@ -26,5 +26,6 @@ void tcp_exit(void);
 void process_tcp(u_char *, int);
 void process_icmp(u_char *);
 void tcp_check_timeouts(struct timeval *);
+int get_tcp_stream_num(void);
 
 #endif /* _NIDS_TCP_H */

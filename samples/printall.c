@@ -50,8 +50,8 @@ int deal_with_flv_video(struct tcp_stream *a_tcp,FLV_FLOW_HEADER*h)
 	int get_data_len = 0, prev_tag_size = 0, tag_data_size = 0 ,new_need_data_len = 0,offset = 0;;
 	FLV_TAG *ftag ;
 	
-	printf("flow_id %2d data_len %7d last_need_len %7d read %7d bufsize %7d remaind_data_len %7d\n",h->flv_flow_id,data_len,
-		h->last_need_data_len,a_tcp->read,client->bufsize,remaind_data_len);
+	//printf("tcp_stream_num %3d flow_id %2d data_len %7d last_need_len %7d read %7d bufsize %7d remaind_data_len %7d\n",
+	//	get_tcp_stream_num(),h->flv_flow_id,data_len,h->last_need_data_len,a_tcp->read,client->bufsize,remaind_data_len);
 
 	while( remaind_data_len >= h->last_need_data_len ){
 		ftag = (FLV_TAG*)(data + offset);
@@ -81,9 +81,9 @@ int deal_with_flv_video(struct tcp_stream *a_tcp,FLV_FLOW_HEADER*h)
 		if(new_need_data_len > remaind_data_len){
 			h->last_need_data_len = new_need_data_len;
 			//discard_data_len += remaind_data_len;
-			printf("tag_id %d need_data_len %u > remaind_data_len %u, discard_data_len %u\n",h->tag_id,new_need_data_len ,remaind_data_len ,
-			discard_data_len);
-			dump_print("FLV_TAG_HEADER", 64, ftag);
+			//printf("tag_id %d need_data_len %u > remaind_data_len %u, discard_data_len %u\n",h->tag_id,new_need_data_len 
+			//,remaind_data_len ,discard_data_len);
+			//dump_print("FLV_TAG_HEADER", 64, ftag);
 			goto discard_data;
 		}
 		
@@ -98,7 +98,7 @@ int deal_with_flv_video(struct tcp_stream *a_tcp,FLV_FLOW_HEADER*h)
 		remaind_data_len -= offset ;
 					data += new_need_data_len ;
 		
-		printf("tag_id %4u tag_data_size %8u discard_data_len %7d\n",h->tag_id, tag_data_size,discard_data_len);
+		fprintf(h->tcp_log,"flow %d tag_id %4u tag_data_size %8u discard_data_len %7d\n",h->flv_flow_id,h->tag_id, tag_data_size,discard_data_len);
 		//printf("last_prev_tag_size %8u prev_tag_size %8u tag_id %4u tag_data_size %8u\n",h->last_prev_tag_size,prev_tag_size,h->tag_id, tag_data_size);
 	
 		tag_data_size = 0;
@@ -190,7 +190,6 @@ tcp_callback (struct tcp_stream *a_tcp, void ** this_time_not_needed)
       //fprintf (stderr, "%s closing\n", buf);
 	  strcat (buf, " closing\n");
 	//do_log (buf);
-	  
       return;
     }
   if (a_tcp->nids_state == NIDS_RESET)
@@ -269,6 +268,7 @@ main ()
   // here we can alter libnids params, for instance:
   // nids_params.n_hosts=256;
   nids_params.filename = "test.pcap";
+  //nids_params.n_tcp_streams = 1040;
   if (!nids_init ())
   {
   	fprintf(stderr,"%s\n",nids_errbuf);

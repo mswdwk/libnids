@@ -41,7 +41,6 @@ enum {
 
 #define TCP_RECV_DATA_BUF_SIZE 6553500
 
-
 #define FIN_SENT 120
 #define FIN_CONFIRMED 121
 #define COLLECT_cc 1
@@ -250,10 +249,7 @@ static int get_wscale(struct tcphdr * this_tcphdr, unsigned int * ws)
 	}			
 			
   return ret;
-}  		
-
-    
-
+}
 
 static void
 add_new_tcp(struct tcphdr * this_tcphdr, struct ip * this_iphdr)
@@ -674,7 +670,6 @@ nids_find_tcp_stream(struct tuple4 *addr)
   return a_tcp ? a_tcp : 0;
 }
 
-
 void tcp_exit(void)
 {
   int i;
@@ -1038,4 +1033,9 @@ process_icmp(u_char * data)
   for (i = a_tcp->listeners; i; i = i->next)
     (i->item) (a_tcp, &i->data);
   nids_free_tcp_stream(a_tcp);
+}
+
+int get_tcp_stream_num(void)
+{
+	return tcp_num;
 }

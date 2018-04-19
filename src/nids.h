@@ -13,12 +13,12 @@
 #include <netinet/tcp.h>
 #include <pcap.h>
 
-# ifdef __cplusplus
+#ifdef __cplusplus
 extern "C" {
-# endif
+#endif
 
-# define NIDS_MAJOR 1
-# define NIDS_MINOR 24
+#define NIDS_MAJOR 1
+#define NIDS_MINOR 24
 
 enum
 {
