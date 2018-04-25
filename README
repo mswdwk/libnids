@@ -60,3 +60,12 @@ The primary libnids site is
 http://libnids.sourceforge.net/
 Please send bug reports, comments, or questions about this software to
 <nergal@7bulls.com>.
+
+6. Needed libs
+---------------
+a) libpcap-devel
+    yum install -y libpcap-devel
+b) glib2-devel
+    yum install -y glib2-devel
+c) libnet-devel
+    yum install -y libnet-devel
