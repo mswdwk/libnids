@@ -63,9 +63,18 @@ Please send bug reports, comments, or questions about this software to
 
 6. Needed libs
 ---------------
+On CentOS 7 x86_64
 a) libpcap-devel
     yum install -y libpcap-devel
 b) glib2-devel
     yum install -y glib2-devel
 c) libnet-devel
     yum install -y libnet-devel
+
+On Ubuntu 16.04 x86_64
+a) libpcap-dev
+    apt install -y libpcap-dev
+b) glib2-devel
+    apt install -y libglib2.0-dev
+c) libnet-devel
+    apt install -y libnet-dev
